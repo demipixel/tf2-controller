@@ -9,7 +9,6 @@
   "author": "DemiPixel <luke5227@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "dns": "^0.2.2",
     "ejs": "^2.3.4",
     "express": "^4.13.3",
     "http": "0.0.0",

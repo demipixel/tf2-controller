@@ -15,10 +15,6 @@ http.listen(4000, function() {
 	console.log('Listening for socket.io on 4000');
 });
 
-require('dns').lookup(require('os').hostname(), function (err, add, fam) {
-  console.log('addr: '+add);
-})
-
 var direction = {
 	left: false,
 	right: false,
