@@ -1,0 +1,19 @@
+{
+  "name": "robotf2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "DemiPixel <luke5227@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^2.3.4",
+    "express": "^4.13.3",
+    "http": "0.0.0",
+    "open": "0.0.5",
+    "robotjs": "^0.3.0",
+    "socket.io": "^1.3.7"
+  }
+}

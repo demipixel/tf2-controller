@@ -1,0 +1,172 @@
+<html>
+<head>
+<style>
+
+body {
+	position: relative;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+html, body {
+	overflow: hidden;
+}
+
+</style>
+<script src="https://cdn.socket.io/socket.io-1.3.5.js"></script>
+<script>
+
+var socket;
+var connected = false;
+var ctx = null;
+var can = null;
+var interval = null;
+
+var FULL_JOYSTICK_SIZE = 350;
+var JOYSTICK_SIZE = 64;
+
+function init() {
+	socket = io('10.0.0.6:4000');
+	socket.on('connect', function() {
+		connected = true;
+		console.log('Connected to socket.io server');
+		createInterval();
+	});
+
+	can = document.getElementById('main');
+	ctx = can.getContext('2d');
+
+	can.addEventListener('touchstart', touchDown, false);
+	can.addEventListener('touchmove', touchMove, false);
+	can.addEventListener('touchend', touchUp, false);
+
+	createButton(document.getElementById('jump'), 'jump');
+	createButton(document.getElementById('crouch'), 'crouch');
+
+	draw();
+}
+
+function draw() {
+	ctx.clearRect(0, 0, FULL_JOYSTICK_SIZE, FULL_JOYSTICK_SIZE);
+
+	ctx.beginPath();
+	ctx.arc(FULL_JOYSTICK_SIZE/2, FULL_JOYSTICK_SIZE/2, FULL_JOYSTICK_SIZE/2-3, 0, Math.PI*2);
+	ctx.closePath();
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.arc(FULL_JOYSTICK_SIZE/2 + joystickPos.x, FULL_JOYSTICK_SIZE/2 + joystickPos.y, JOYSTICK_SIZE, 0, Math.PI*2)
+	ctx.closePath();
+	ctx.fillStyle = 'rgb(0, 0, 0)';
+	ctx.fill();
+	
+	window.requestAnimationFrame(draw);
+}
+
+function changeJoystick(x, y) {
+	if (!connected) console.log('Not connected!');
+
+	x = Math.min(1, Math.max(-1, x));
+	y = Math.min(1, Math.max(-1, y));
+
+	socket.emit('joystick',{ x: x, y: y });
+}
+
+function pressButton(b) {
+	if (!connected) return;
+	socket.emit('press',b);
+}
+
+function releaseButton(b) {
+	if (!connected) return;
+	socket.emit('release',b);
+}
+
+var touching = false;
+var touchStart = { x: 0, y: 0 };
+var joystickPos = { x: 0, y: 0 };
+
+function touchDown(e) {
+	touching = true;
+	clearInterval(interval);
+	e.preventDefault();
+	var touch = (e.originalEvent ? e.originalEvent.touches[0] : e.touches[0]) || (e.originalEvent ? e.originalEvent.changedTouches[0] : e.changedTouches[0]);
+	touchStart.x = touch.pageX;
+	touchStart.y = touch.pageY;
+	document.getElementById('info').innerHTML = 'down ' + touch.pageX + ', ' + touch.pageY;
+}
+
+function touchMove(e) {
+	e.preventDefault();
+	var touch = (e.originalEvent ? e.originalEvent.touches[0] : e.touches[0]) || (e.originalEvent ? e.originalEvent.changedTouches[0] : e.changedTouches[0]);
+	
+	joystickPos.x = touch.pageX - touchStart.x;
+	joystickPos.y = touch.pageY - touchStart.y;
+	var distance = Math.sqrt(Math.pow(joystickPos.x, 2) + Math.pow(joystickPos.y, 2));
+	var smallOffset = 3;
+	var maxDistance = FULL_JOYSTICK_SIZE - JOYSTICK_SIZE*3 - smallOffset;
+
+	if (distance > maxDistance) {
+		var offset = distance / maxDistance;
+		joystickPos.x /= offset;
+		joystickPos.y /= offset;
+	}
+
+	changeJoystick(joystickPos.x / maxDistance, joystickPos.y / maxDistance);
+
+	document.getElementById('info').innerHTML = 'OUTSIDE ' + touch.pageX + ', ' + touch.pageY;
+}
+
+function touchUp() {
+	touching = false;
+	joystickPos.x = 0;
+	joystickPos.y = 0;
+
+	changeJoystick(0, 0);
+	createInterval();
+
+	e.preventDefault();
+	document.getElementById('info').innerHTML = 'up';
+}
+
+function createInterval() {
+	if (interval) clearInterval(interval);
+	interval = setInterval(function() {
+		changeJoystick(0, 0);
+	}, 50);
+}
+
+function createButton(canvas, key) {
+	var pressed = false;
+	canvas.addEventListener('touchstart', function() {
+		pressButton(key);
+		pressed = true;
+	});
+	canvas.addEventListener('touchend', function() {
+		releaseButton(key);
+		pressed = false;
+	});
+	var drawButton = function() {
+		var ctx = canvas.getContext('2d');
+		if (pressed) ctx.fillStyle = 'rgb(0, 0, 0)';
+		else ctx.fillStyle = 'rgb(255, 255, 255)';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		window.requestAnimationFrame(drawButton);
+	}
+	drawButton();
+}
+
+</script>
+</head>
+<body onLoad=init()>
+	Hope this works...<br>
+	<canvas id=main width=350 height=350 style="border: 1px solid black">This isn't gonna work. You don't support canvases. Search what that means online.</canvas>
+	<canvas id=jump width=200 height=350 style="border: 1px solid black"></canvas>
+	<canvas id=crouch width=200 height=350 style="border: 1px solid black"></canvas>
+	<div id="info"></div>
+</body>
+</html>
