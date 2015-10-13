@@ -1,5 +1,11 @@
 <html>
+<head>
+<script src="./qrcode"></script>
+</head>
 <body>
-	Test 2!
+	<div id="qrcode"></div>
+	<script>
+		new QRCode(document.getElementById("qrcode"), "<%- url %>");
+	</script>
 </body>
 </html>

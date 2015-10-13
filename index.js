@@ -26,7 +26,7 @@ var mouseSpeed = {
 	x: 0,
 	y: 0
 };
-var MOUSE_SPEED = 200;
+var MOUSE_SPEED = 1300;
 var relMousePos = {
 	x: 0,
 	y: 0
@@ -35,9 +35,18 @@ var relMousePos = {
 setInterval(function() {
 	if (!mouseSpeed.x && !mouseSpeed.y) return;
 	var pos = robot.getMousePos();
+
+	var angle = Math.atan2(mouseSpeed.x, mouseSpeed.y) + Math.PI*3/2;
+	var dist = Math.sqrt(Math.pow(mouseSpeed.x, 2) + Math.pow(mouseSpeed.y, 2));
+	// Change dist so it's easier to deal with
+	dist = 1 - Math.sin((1 - dist) * Math.PI/2);
+
+	var velX = Math.cos(angle) * dist;
+	var velY = -Math.sin(angle) * dist;
+
 	var newpos = {
-		x: pos.x + mouseSpeed.x/60*MOUSE_SPEED + relMousePos.x,
-		y: pos.y + mouseSpeed.y/60*MOUSE_SPEED + relMousePos.y
+		x: pos.x + velX/60*MOUSE_SPEED + relMousePos.x,
+		y: pos.y + velY/60*MOUSE_SPEED + relMousePos.y
 	}
 	robot.moveMouse(Math.floor(newpos.x), Math.floor(newpos.y));
 
@@ -87,9 +96,9 @@ io.on('connection', function(socket) {
 	});
 
 	socket.on('movemouse', function(pos) {
-		console.log(pos);
+		//console.log(pos);
 		if (pos.x > 1 || pos.x < -1 || pos.y > 1 || pos.y < -1) return;
-		if (Math.abs(pos.x) + Math.abs(pos.y) < 0.4) {
+		if (Math.abs(pos.x) + Math.abs(pos.y) < 0.2) {
 			pos.x = 0;
 			pos.y = 0;
 		}
@@ -100,7 +109,13 @@ io.on('connection', function(socket) {
 	var buttons = {
 		jump: false,
 		crouch: false,
-		reload: false
+		reload: false,
+		click: false,
+		rclick: false,
+		'1': false,
+		'2': false,
+		'3': false,
+		'4': false
 	}
 	
 	socket.on('press', function(button) {
@@ -126,6 +141,16 @@ io.on('connection', function(socket) {
 			keyChanges(press, buttons.jump, 'space');
 		} else if (button == 'crouch') {
 			keyChanges(press, buttons.crouch, 'control');
+		} else if (button == 'click') {
+			if (press != buttons['click']) {
+				robot.mouseToggle(press ? 'down' : 'up');
+			}
+		} else if (parseInt(button)) {
+			keyChanges(press, buttons[button], button);
+		} else if (button == 'rclick') {
+			if (press != buttons['rclick']) {
+				robot.mouseToggle(press ? 'down' : 'up', 'right');
+			}
 		}
 		buttons[button] = press;
 	}
@@ -133,12 +158,13 @@ io.on('connection', function(socket) {
 
 function keyChanges(bool, confirm, key) {
 	if (bool != confirm) {
-		robot.keyToggle(key, (bool ? 1 : 0));
+		robot.keyToggle(key, bool);
 	}
 }
 
 var server = app.listen(3000, function() {
 	console.log('Server is live');
+	if (process.argv[2] == 'open') require('open')('http://' + ip + ':3000/qr');
 });
 
 app.get('/', function(req, res) {
@@ -146,7 +172,13 @@ app.get('/', function(req, res) {
 });
 
 app.get('/qr', function(req, res) {
-	res.render('qr.ejs');
+	res.render('qr.ejs', {
+		url: 'http://' + ip + ':3000'
+	});
+});
+
+app.get('/qrcode', function(req, res) {
+	res.render('qrcode.min.ejs');
 });
 
 

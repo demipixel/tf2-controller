@@ -1,4 +1,9 @@
 <html>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=0.6, maximum-scale=0.6, user-scalable=0"/>
+<meta name="HandheldFriendly" content="true" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 <head>
 <style>
 
@@ -10,6 +15,7 @@ body {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  margin: 0px;
 }
 
 html, body {
@@ -36,9 +42,54 @@ function init() {
 
 	createButton(document.getElementById('jump'), 'jump');
 	createButton(document.getElementById('crouch'), 'crouch');
+	createButton(document.getElementById('click'), 'click');
+	createButton(document.getElementById('rclick'), 'rclick');
+
+	createButton(document.getElementById('press1'), '1');
+	createButton(document.getElementById('press2'), '2');
+	createButton(document.getElementById('press3'), '3');
+	createButton(document.getElementById('press4'), '4');
 
 	createJoystick(document.getElementById('move'), changeMoveJoystick);
 	createJoystick(document.getElementById('mouse'), moveMouseJoystick);
+
+	//hideAddressBar();
+}
+
+function hideAddressBar() {
+	(function( win ){
+		var doc = win.document;
+		
+		// If there's a hash, or addEventListener is undefined, stop here
+		if(!win.navigator.standalone && !location.hash && win.addEventListener ){
+			
+			//scroll to 1
+			win.scrollTo( 0, 1 );
+			var scrollTop = 1,
+				getScrollTop = function(){
+					return win.pageYOffset || doc.compatMode === "CSS1Compat" && doc.documentElement.scrollTop || doc.body.scrollTop || 0;
+				},
+			
+				//reset to 0 on bodyready, if needed
+				bodycheck = setInterval(function(){
+					if( doc.body ){
+						clearInterval( bodycheck );
+						scrollTop = getScrollTop();
+						win.scrollTo( 0, scrollTop === 1 ? 0 : 1 );
+					}	
+				}, 15 );
+			
+			win.addEventListener( "load", function(){
+				setTimeout(function(){
+					//at load, if user hasn't scrolled more than 20 or so...
+					if( getScrollTop() < 20 ){
+						//reset to hide addr bar at onload
+						win.scrollTo( 0, scrollTop === 1 ? 0 : 1 );
+					}
+				}, 0);
+			}, false );
+		}
+	})( this );
 }
 
 function changeMoveJoystick(x, y) {
@@ -58,7 +109,7 @@ function moveMouseJoystick(x, y) {
 	x = Math.min(1, Math.max(-1, x));
 	y = Math.min(1, Math.max(-1, y));
 
-	document.getElementById('info').innerHTML = x + ', ' + y;
+	//document.getElementById('info').innerHTML = x + ', ' + y;
 
 	socket.emit('movemouse',{ x: x, y: y });
 }
@@ -84,7 +135,7 @@ function createJoystick(canvas, action) {
 	}
 
 	var touching = false;
-	var touchStart = { x: 0, y: 0 };
+	var center = { x: FULL_JOYSTICK_SIZE/2, y: FULL_JOYSTICK_SIZE/2 };
 	var joystickPos = { x: 0, y: 0 };
 
 	var thisTouchNum = 0;
@@ -96,20 +147,27 @@ function createJoystick(canvas, action) {
 		var touchList = (e.originalEvent ? (e.originalEvent.touches || e.changedTouches) : (e.touches || e.changedTouches));
 		thisTouchNum = touchList.length - 1;
 		var touch = touchList[thisTouchNum];
-		touchStart.x = touch.pageX;
-		touchStart.y = touch.pageY;
+		var rect = canvas.getBoundingClientRect();
+		joystickPos.x = touch.pageX - center.x - rect.left;
+		joystickPos.y = touch.pageY - center.y - rect.top;
+
+		var smallOffset = 30;
+		var maxDistance = FULL_JOYSTICK_SIZE - JOYSTICK_SIZE*4 - smallOffset;
+		action(joystickPos.x / maxDistance, joystickPos.y / maxDistance);
 	}
 
 	function touchMove(e) {
 		e.preventDefault();
 		var touchList = (e.originalEvent ? (e.originalEvent.touches || e.changedTouches) : (e.touches || e.changedTouches));
+		if (touchList.length == 1 && thisTouchNum == 1) thisTouchNum--;
 		var touch = touchList[thisTouchNum];
 		
-		joystickPos.x = touch.pageX - touchStart.x;
-		joystickPos.y = touch.pageY - touchStart.y;
+		var rect = canvas.getBoundingClientRect();
+		joystickPos.x = touch.pageX - center.x - rect.left;
+		joystickPos.y = touch.pageY - center.y - rect.top;
 		var distance = Math.sqrt(Math.pow(joystickPos.x, 2) + Math.pow(joystickPos.y, 2));
-		var smallOffset = 3;
-		var maxDistance = FULL_JOYSTICK_SIZE - JOYSTICK_SIZE*3 - smallOffset;
+		var smallOffset = 30;
+		var maxDistance = FULL_JOYSTICK_SIZE - JOYSTICK_SIZE*4 - smallOffset;
 
 		if (distance > maxDistance) {
 			var offset = distance / maxDistance;
@@ -127,6 +185,8 @@ function createJoystick(canvas, action) {
 
 		action(0, 0);
 		createInterval();
+
+		//alert(JSON.stringify((e.originalEvent ? (e.originalEvent.touches || e.changedTouches) : (e.touches || e.changedTouches))));
 
 		e.preventDefault();
 	}
@@ -181,11 +241,17 @@ function createButton(canvas, key) {
 </script>
 </head>
 <body onLoad=init()>
-	Hope this works...<br>
 	<canvas id=move width=300 height=300 style="border: 1px solid black">This isn't gonna work. You don't support canvases. Search what that means online.</canvas>
 	<canvas id=jump width=150 height=300 style="border: 1px solid black"></canvas>
 	<canvas id=crouch width=150 height=300 style="border: 1px solid black"></canvas>
-	<canvas id=mouse width=300 height=300 style="border: 1px solid black"></canvas>
-	<div id="info">
+	<canvas id=mouse width=300 height=300 style="border: 1px solid black"></canvas><br>
+
+	<canvas id=rclick width=450 height=75 style="border: 1px solid black"></canvas>
+	<canvas id=click width=450 height=75 style="border: 1px solid black"></canvas><br>
+
+	<canvas id=press1 width=225 height=100 style="border: 1px solid black"></canvas>
+	<canvas id=press2 width=225 height=100 style="border: 1px solid black"></canvas>
+	<canvas id=press3 width=225 height=100 style="border: 1px solid black"></canvas>
+	<canvas id=press4 width=225 height=100 style="border: 1px solid black"></canvas>
 </body>
 </html>
