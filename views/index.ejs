@@ -54,6 +54,9 @@ function init() {
 	createJoystick(document.getElementById('mouse'), moveMouseJoystick);
 
 	//hideAddressBar();
+	setInterval(function() {
+		window.scrollTo(0, 1);
+	});
 }
 
 function hideAddressBar() {
