@@ -181,7 +181,9 @@ app.get('/qrcode', function(req, res) {
 	res.render('qrcode.min.ejs');
 });
 
-
+app.get('/binds', function(req, res) {
+	res.render('bind.ejs');
+});
 
 
 
